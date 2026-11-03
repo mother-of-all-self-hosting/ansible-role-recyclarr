@@ -1,0 +1,14 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "github>mother-of-all-self-hosting/renovate-config#v1.1.0"
+  ],
+  "packageRules": [
+    {
+      "description": "ghcr.io/recyclarr/recyclarr publishes each release as `X.Y.Z`, next to floating `X` and `X.Y` tags, `X.Y.Z-dev.N` pre-releases and `edge`. `versioning=semver` on the annotation in defaults/main.yml already keeps the floating tags and pre-releases out, so this is belt-and-braces: it keeps them out even if that annotation is ever changed to `docker` or `loose` versioning.",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["ghcr.io/recyclarr/recyclarr"],
+      "allowedVersions": "/^\\d+\\.\\d+\\.\\d+$/"
+    }
+  ]
+}

@@ -1,0 +1,105 @@
+# SPDX-FileCopyrightText: 2026 Slavi Pantaleev
+# SPDX-FileCopyrightText: 2026 Suguru Hirahara
+# SPDX-FileCopyrightText: 2026 spatterlight
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+---
+dependency:
+  name: galaxy
+  options:
+    requirements-file: requirements.yml
+    force: true
+driver:
+  name: docker
+platforms:
+  # The name carries both the role and the scenario, so that scenarios running
+  # in parallel cannot collide on it.
+  - name: recyclarr-${MOLECULE_DISTRO:-ubuntu2604}-default
+    image: "geerlingguy/docker-${MOLECULE_DISTRO:-ubuntu2604}-ansible:latest"
+    command: ${MOLECULE_DOCKER_COMMAND:-""}
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+      # Docker inside the instance stores images via containerd. Its storage
+      # cannot use overlay on top of the instance's own overlay filesystem, so a
+      # volume puts it on a real filesystem.
+      - /var/lib/containerd
+    # Remove volumes along with the instance, so that local runs do not leave
+    # gigabytes behind.
+    keep_volumes: false
+    cgroupns_mode: host
+    privileged: true
+    pre_build_image: true
+provisioner:
+  name: ansible
+  config_options:
+    defaults:
+      callback_result_format: yaml
+  inventory:
+    group_vars:
+      all:
+        # Helper variables
+        recyclarr_debug_service_enabled: false
+        recyclarr_restarts_check_enabled: true
+
+        # The Sonarr that prepare.yml starts for Recyclarr to sync to, on a
+        # container network of its own, which only the role's additional
+        # networks can connect Recyclarr to. Its API key is fixed, so that the
+        # role can be handed it. The port is published on the loopback interface
+        # of the test container only, for verify.yml to read Sonarr's settings.
+        recyclarr_molecule_sonarr_container: recyclarr-molecule-sonarr
+        recyclarr_molecule_sonarr_network: recyclarr-molecule-sonarr
+        recyclarr_molecule_sonarr_image: ghcr.io/linuxserver/sonarr:4.0.20
+        recyclarr_molecule_sonarr_api_key: a1b2c3d4e5f60718293a4b5c6d7e8f90
+        recyclarr_molecule_sonarr_url: http://127.0.0.1:18989
+
+        # The custom format of the TRaSH Guides that the sync creates in Sonarr,
+        # which a fresh Sonarr does not have.
+        recyclarr_molecule_custom_format_trash_id: 85c61753df5da1fb2aab6f2a47426b09
+        recyclarr_molecule_custom_format_name: BR-DISK
+
+        # Sonarr's own season folder format, and the one the TRaSH Guides
+        # recommend, which the sync sets through the configuration extension.
+        recyclarr_molecule_season_folder_format_stock: "Season {season}"
+        recyclarr_molecule_season_folder_format_guide: "Season {season:00}"
+
+        # Variables for Recyclarr
+        #
+        # Deliberately not the image's own 1000:1000, so that the container
+        # running as this user can only be the role's doing.
+        recyclarr_uid: 1873
+        recyclarr_gid: 1873
+
+        recyclarr_container_additional_networks_custom:
+          - "{{ recyclarr_molecule_sonarr_network }}"
+
+        recyclarr_config_sonarr:
+          main:
+            base_url: "http://{{ recyclarr_molecule_sonarr_container }}:8989"
+            api_key: "{{ recyclarr_molecule_sonarr_api_key }}"
+            custom_formats:
+              - trash_ids:
+                  - "{{ recyclarr_molecule_custom_format_trash_id }}"
+
+        # Merged into the instance above, so that the season folder format
+        # reaching Sonarr proves the extension is merged rather than dropped or
+        # replacing the instance.
+        recyclarr_configuration_extension_yaml: |
+          sonarr:
+            main:
+              media_naming:
+                season: default
+
+        # Every minute rather than the role's daily default, so that a sync
+        # happens while verify.yml watches.
+        recyclarr_environment_variables_cron_schedule: "* * * * *"
+
+        # Neither the role's default of Etc/UTC nor the test host's zone, so
+        # that the timezone the container ends up in can only have come from
+        # templates/env.j2.
+        recyclarr_environment_variables_tz: Asia/Tokyo
+  env:
+    # Workaround for https://github.com/ansible/molecule/issues/4391
+    ANSIBLE_ROLES_PATH: ${MOLECULE_PROJECT_DIRECTORY}/..:/.ansible/roles:/usr/share/ansible/roles:/etc/ansible/roles:~/.ansible/roles
+verifier:
+  name: ansible

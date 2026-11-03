@@ -1,0 +1,78 @@
+# SPDX-FileCopyrightText: 2026 spatterlight
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+---
+- name: Prepare Recyclarr Molecule tests
+  hosts: all
+  become: true
+  gather_facts: true
+  tasks:
+    - name: Ensure apt cache is updated for Recyclarr Molecule tests preparation
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 600
+      when: ansible_facts["os_family"] == 'Debian'
+
+    - name: Ensure required packages are installed for Recyclarr Molecule tests preparation
+      ansible.builtin.package:
+        name:
+          # Used by the `ansible.builtin.uri` calls below and in verify.yml
+          - python3-requests
+        state: present
+
+    - name: Ensure Docker is installed for Recyclarr Molecule tests preparation
+      ansible.builtin.include_role:
+        name: ansible-role-docker
+
+    # The role does not create additional networks, so the one connecting
+    # Recyclarr to Sonarr has to exist before the role starts Recyclarr.
+    - name: Ensure the Sonarr network exists for Recyclarr Molecule tests
+      ansible.builtin.command:
+        cmd: "docker network create {{ recyclarr_molecule_sonarr_network }}"
+      register: recyclarr_molecule_sonarr_network_result
+      changed_when: recyclarr_molecule_sonarr_network_result.rc == 0
+      failed_when: >-
+        recyclarr_molecule_sonarr_network_result.rc != 0
+        and 'already exists' not in recyclarr_molecule_sonarr_network_result.stderr
+
+    - name: Ensure Sonarr is running for Recyclarr Molecule tests
+      ansible.builtin.command:
+        argv:
+          - docker
+          - run
+          - --detach
+          - --name={{ recyclarr_molecule_sonarr_container }}
+          - --network={{ recyclarr_molecule_sonarr_network }}
+          - --publish=127.0.0.1:18989:8989
+          - --env=SONARR__AUTH__APIKEY={{ recyclarr_molecule_sonarr_api_key }}
+          - "{{ recyclarr_molecule_sonarr_image }}"
+      changed_when: true
+
+    - name: Wait for Sonarr to answer its API (up to 180s)
+      ansible.builtin.uri:
+        url: "{{ recyclarr_molecule_sonarr_url }}/api/v3/config/naming"
+        headers:
+          X-Api-Key: "{{ recyclarr_molecule_sonarr_api_key }}"
+      register: recyclarr_molecule_sonarr_naming
+      until: recyclarr_molecule_sonarr_naming.status == 200
+      retries: 36
+      delay: 5
+
+    - name: Read the custom formats of the fresh Sonarr
+      ansible.builtin.uri:
+        url: "{{ recyclarr_molecule_sonarr_url }}/api/v3/customformat"
+        headers:
+          X-Api-Key: "{{ recyclarr_molecule_sonarr_api_key }}"
+      register: recyclarr_molecule_sonarr_custom_formats
+
+    # What verify.yml looks for must not be there before Recyclarr ever ran.
+    - name: Assert the fresh Sonarr has neither the custom format nor the season folder format the sync sets
+      ansible.builtin.assert:
+        that:
+          - recyclarr_molecule_sonarr_custom_formats.json | length == 0
+          - recyclarr_molecule_sonarr_naming.json.seasonFolderFormat == recyclarr_molecule_season_folder_format_stock
+        fail_msg: >-
+          The fresh Sonarr already has custom formats {{ recyclarr_molecule_sonarr_custom_formats.json | map(attribute='name') | list }}
+          and the season folder format {{ recyclarr_molecule_sonarr_naming.json.seasonFolderFormat }}
+        success_msg: "The fresh Sonarr has no custom formats and its own season folder format"
