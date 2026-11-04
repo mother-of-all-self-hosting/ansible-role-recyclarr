@@ -30,6 +30,7 @@
     recyclarr_verify_cron_schedule: "* * * * *"
 
     recyclarr_verify_units:
+      - sonarr.service
       - recyclarr.service
 
   tasks:
@@ -329,17 +330,21 @@
               - "Sonarr season folder format: {{ recyclarr_sonarr_naming.json.seasonFolderFormat }}"
 
       rescue:
-        # Whatever went wrong, the reason is almost always in the systemd service log.
-        - name: Retrieve the Recyclarr systemd service log
+        # Whatever went wrong, the reason is almost always in the systemd service logs.
+        - name: Retrieve the systemd service logs
           ansible.builtin.command:
-            cmd: journalctl --no-pager --output=cat --unit=recyclarr.service
-          register: recyclarr_service_log
+            cmd: "journalctl --no-pager --output=cat --unit={{ item }}"
+          register: recyclarr_service_logs
           changed_when: false
+          loop: "{{ recyclarr_verify_units }}"
 
-        - name: Show the Recyclarr systemd service log
+        - name: Show the systemd service logs
           ansible.builtin.debug:
-            var: recyclarr_service_log.stdout_lines
+            msg: "{{ item.stdout_lines }}"
+          loop: "{{ recyclarr_service_logs.results }}"
+          loop_control:
+            label: "{{ item.item }}"
 
         - name: Fail because verification did not pass
           ansible.builtin.fail:
-            msg: "Recyclarr verification failed. The systemd service log is printed above."
+            msg: "Verification failed. The systemd service logs are printed above."

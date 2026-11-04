@@ -154,7 +154,7 @@ recyclarr_configuration_extension: "{{ recyclarr_configuration_extension_yaml | 
 
 # Holds the final Recyclarr configuration (a combination of the default and its extension).
 # You most likely don't need to touch this variable. Instead, see `recyclarr_configuration_yaml`.
-recyclarr_configuration: "{{ recyclarr_configuration_yaml | from_yaml | combine(recyclarr_configuration_extension, recursive=true) }}"
+recyclarr_configuration: "{{ recyclarr_configuration_yaml | from_yaml | combine(recyclarr_configuration_extension, recursive=True) }}"
 
 # Specify the timezone
 recyclarr_environment_variables_tz: "Etc/UTC"

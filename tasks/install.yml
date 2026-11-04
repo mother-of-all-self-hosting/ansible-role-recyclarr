@@ -82,7 +82,6 @@
     src: "{{ role_path }}/templates/systemd/recyclarr.service.j2"
     dest: "{{ devture_systemd_docker_base_systemd_path }}/{{ recyclarr_identifier }}.service"
     mode: "0644"
-    lstrip_blocks: true
   register: recyclarr_systemd_service_result
 
 - name: Determine whether Recyclarr needs a restart

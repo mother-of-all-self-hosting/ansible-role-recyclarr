@@ -40,22 +40,21 @@
   ansible.builtin.fail:
     msg: >-
       Recyclarr needs each instance name to be unique across Sonarr and Radarr, ignoring case,
-      but `{{ item }}` is used more than once.
-  when: recyclarr_instance_names | select('equalto', item) | list | length > 1
-  loop: "{{ recyclarr_instance_names | unique }}"
+      but the instance names (in lower case) are {{ recyclarr_instance_names }}.
+  when: recyclarr_instance_names | unique | length != recyclarr_instance_names | length
   vars:
     recyclarr_instance_names: >-
       {{ (recyclarr_configuration.sonarr | default({}, true) | list
           + recyclarr_configuration.radarr | default({}, true) | list)
          | map('lower') | list }}
 
+# Recyclarr compares base URLs as written, so letter case counts here.
 - name: Fail if a Recyclarr instance base URL is used more than once
   ansible.builtin.fail:
     msg: >-
       Recyclarr needs each instance to have a `base_url` of its own,
-      but `{{ item }}` is used by more than one. Combine their settings into one instance.
-  when: recyclarr_instance_base_urls | select('equalto', item) | list | length > 1
-  loop: "{{ recyclarr_instance_base_urls | unique }}"
+      but the base URLs are {{ recyclarr_instance_base_urls }}. Combine the settings of instances sharing one into a single instance.
+  when: recyclarr_instance_base_urls | unique(case_sensitive=true) | length != recyclarr_instance_base_urls | length
   vars:
     recyclarr_instance_base_urls: >-
       {{ (recyclarr_configuration.sonarr | default({}, true) | dict2items

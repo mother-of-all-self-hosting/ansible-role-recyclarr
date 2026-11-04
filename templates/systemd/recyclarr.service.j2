@@ -31,10 +31,10 @@ ExecStartPre={{ devture_systemd_docker_base_host_command_docker }} create \
       --env-file={{ recyclarr_base_path }}/env \
       --mount type=bind,src={{ recyclarr_data_path }},dst=/config \
       --mount type=bind,src={{ recyclarr_base_path }}/recyclarr.yml,dst=/config/recyclarr.yml,readonly \
-      --tmpfs=/tmp:rw,noexec,nosuid,size={{ recyclarr_container_tmpfs_tmp_size }} \
       {% for volume in recyclarr_container_additional_volumes %}
       --mount type={{ volume.type | default('bind' if '/' in volume.src else 'volume') }},src={{ volume.src }},dst={{ volume.dst }}{{ (',' + volume.options) if volume.options | default('') else '' }} \
       {% endfor %}
+      --tmpfs=/tmp:rw,noexec,nosuid,size={{ recyclarr_container_tmpfs_tmp_size }} \
       {% for arg in recyclarr_container_extra_arguments %}
       {{ arg }} \
       {% endfor %}

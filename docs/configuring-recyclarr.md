@@ -107,8 +107,7 @@ There are some additional things you may wish to configure about the service.
 
 Take a look at:
 
-- [`defaults/main.yml`](../defaults/main.yml) for some variables that you can customize via your `vars.yml` file
-- `recyclarr_configuration_extension_yaml` for extending the configuration file which the role renders from `recyclarr_config_sonarr` and `recyclarr_config_radarr`
+- [`defaults/main.yml`](../defaults/main.yml) for some variables that you can customize via your `vars.yml` file. You can override settings (even those that don't have dedicated playbook variables) using the `recyclarr_configuration_extension_yaml` variable
 
 ## Installing
 
