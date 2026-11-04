@@ -200,7 +200,8 @@
         # Recyclarr does not sync on start, only on its schedule, so a custom format
         # turning up in Sonarr means the scheduled sync ran, read the rendered
         # configuration, reached Sonarr over the additional network, and could write
-        # its copy of the TRaSH Guides to the data path. A fresh Sonarr has none.
+        # its copy of the TRaSH Guides to the data path. A fresh Sonarr has none, so
+        # this proves nothing on an instance reused from an earlier run.
         - name: Wait for the scheduled sync to create the custom format in Sonarr (up to 300s)
           ansible.builtin.uri:
             url: "{{ recyclarr_molecule_sonarr_url }}/api/v3/customformat"

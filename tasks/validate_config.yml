@@ -15,6 +15,16 @@
     - recyclarr_container_network
     - recyclarr_environment_variables_cron_schedule
 
+- name: Fail if Recyclarr's Sonarr or Radarr instances are not a mapping
+  ansible.builtin.fail:
+    msg: >-
+      `recyclarr_config_{{ item }}` needs to be a mapping of instance names to their settings,
+      not a string or a list.
+  when: recyclarr_configuration[item] | default({}, true) is not mapping
+  with_items:
+    - sonarr
+    - radarr
+
 - name: Fail if no Sonarr or Radarr instance is configured for Recyclarr
   ansible.builtin.fail:
     msg: >-
@@ -24,14 +34,31 @@
     recyclarr_configuration.sonarr | default({}, true) | length == 0
     and recyclarr_configuration.radarr | default({}, true) | length == 0
 
-# Recyclarr would log this at debug level only, and then sync nothing at all.
-- name: Fail if a Recyclarr instance name is used for both Sonarr and Radarr
+# Recyclarr leaves out instances that share a name (in any letter case) or a
+# `base_url`, and only says so at debug level, so they would quietly not sync.
+- name: Fail if a Recyclarr instance name is used more than once
   ansible.builtin.fail:
     msg: >-
-      Recyclarr needs each instance name to be unique across Sonarr and Radarr,
-      but `{{ recyclarr_instance_names_shared | join('`, `') }}` is used for both.
-  when: recyclarr_instance_names_shared | length > 0
+      Recyclarr needs each instance name to be unique across Sonarr and Radarr, ignoring case,
+      but `{{ item }}` is used more than once.
+  when: recyclarr_instance_names | select('equalto', item) | list | length > 1
+  loop: "{{ recyclarr_instance_names | unique }}"
   vars:
-    recyclarr_instance_names_shared: >-
-      {{ recyclarr_configuration.sonarr | default({}, true) | list
-         | intersect(recyclarr_configuration.radarr | default({}, true) | list) }}
+    recyclarr_instance_names: >-
+      {{ (recyclarr_configuration.sonarr | default({}, true) | list
+          + recyclarr_configuration.radarr | default({}, true) | list)
+         | map('lower') | list }}
+
+- name: Fail if a Recyclarr instance base URL is used more than once
+  ansible.builtin.fail:
+    msg: >-
+      Recyclarr needs each instance to have a `base_url` of its own,
+      but `{{ item }}` is used by more than one. Combine their settings into one instance.
+  when: recyclarr_instance_base_urls | select('equalto', item) | list | length > 1
+  loop: "{{ recyclarr_instance_base_urls | unique }}"
+  vars:
+    recyclarr_instance_base_urls: >-
+      {{ (recyclarr_configuration.sonarr | default({}, true) | dict2items
+          + recyclarr_configuration.radarr | default({}, true) | dict2items)
+         | map(attribute='value') | select('mapping')
+         | map(attribute='base_url', default='') | select | list }}

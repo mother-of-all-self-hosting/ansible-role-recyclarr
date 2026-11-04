@@ -69,7 +69,7 @@ recyclarr_config_radarr:
       type: movie
 ```
 
-**Note**: each instance needs a name of its own, across Sonarr and Radarr alike. Recyclarr does not sync at all if a name is used for both.
+**Note**: each instance needs a name and a `base_url` of its own, across Sonarr and Radarr alike, with names compared regardless of case. Recyclarr skips any instances that share either one, so the role refuses such a configuration.
 
 Refer to [this page](https://recyclarr.dev/reference/configuration/) on the documentation for everything an instance can configure, and to [this page](https://recyclarr.dev/guide/guide-configs/) for ready-made configurations that follow the TRaSH Guides.
 
