@@ -49,7 +49,7 @@ Currently there is one testing scenario available.
 
 Tests a standard Recyclarr installation, syncing to a real Sonarr which the scenario starts on a container network of its own.
 
-The scenario configures Recyclarr with values it would not pick by itself, so that every assertion is attributable to the role: a uid that is not the image's own, a timezone that is neither the role's default nor the test host's, and a schedule of every minute rather than daily. It then waits for the scheduled sync to create a custom format of the TRaSH Guides in Sonarr, and to set the season folder format that only the configuration extension asks for, neither of which a fresh Sonarr has. Run it on a new instance, as `molecule test` does: one reused from an earlier run keeps what that run synced, so the sync has nothing left to prove.
+The scenario configures Recyclarr with values it would not pick by itself, so that every assertion is attributable to the role: a uid that is not the image's own, a timezone that is neither the role's default nor the test host's, and a schedule of every minute rather than daily. It then removes a custom format of the TRaSH Guides from Sonarr and puts back Sonarr's own season folder format, in case an earlier run left them, and waits for the scheduled sync to create that custom format again and to set the season folder format that only the configuration extension asks for.
 
 ## Running
 

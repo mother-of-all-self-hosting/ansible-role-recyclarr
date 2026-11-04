@@ -197,11 +197,43 @@
               The Recyclarr process runs in {{ recyclarr_process_identity.stdout_lines[0] }}
               as {{ recyclarr_process_identity.stdout_lines[1] }}:{{ recyclarr_process_identity.stdout_lines[2] }}
 
-        # Recyclarr does not sync on start, only on its schedule, so a custom format
-        # turning up in Sonarr means the scheduled sync ran, read the rendered
+        # An instance reused across runs keeps what an earlier sync set in Sonarr, so
+        # both are taken back to what a fresh Sonarr has before the sync is waited
+        # for. Whatever turns up afterwards can only come from this run.
+        - name: Look up Sonarr's custom formats and naming before the sync (up to 120s)
+          ansible.builtin.uri:
+            url: "{{ recyclarr_molecule_sonarr_url }}/api/v3/{{ item }}"
+            headers: "{{ recyclarr_verify_sonarr_headers }}"
+          register: recyclarr_sonarr_before
+          until: recyclarr_sonarr_before.status == 200
+          retries: 24
+          delay: 5
+          loop:
+            - customformat
+            - config/naming
+
+        - name: Remove the custom format from Sonarr
+          ansible.builtin.uri:
+            url: "{{ recyclarr_molecule_sonarr_url }}/api/v3/customformat/{{ item.id }}"
+            method: DELETE
+            headers: "{{ recyclarr_verify_sonarr_headers }}"
+          loop: "{{ recyclarr_sonarr_before.results[0].json | selectattr('name', 'equalto', recyclarr_molecule_custom_format_name) | list }}"
+          loop_control:
+            label: "{{ item.name }}"
+
+        - name: Put back Sonarr's own season folder format
+          ansible.builtin.uri:
+            url: "{{ recyclarr_molecule_sonarr_url }}/api/v3/config/naming/{{ recyclarr_sonarr_before.results[1].json.id }}"
+            method: PUT
+            headers: "{{ recyclarr_verify_sonarr_headers }}"
+            body: "{{ recyclarr_sonarr_before.results[1].json | combine({'seasonFolderFormat': recyclarr_molecule_season_folder_format_stock}) }}"
+            body_format: json
+            status_code: [200, 202]
+
+        # Recyclarr does not sync on start, only on its schedule, so the custom format
+        # turning up in Sonarr again means the scheduled sync ran, read the rendered
         # configuration, reached Sonarr over the additional network, and could write
-        # its copy of the TRaSH Guides to the data path. A fresh Sonarr has none, so
-        # this proves nothing on an instance reused from an earlier run.
+        # its copy of the TRaSH Guides to the data path.
         - name: Wait for the scheduled sync to create the custom format in Sonarr (up to 300s)
           ansible.builtin.uri:
             url: "{{ recyclarr_molecule_sonarr_url }}/api/v3/customformat"

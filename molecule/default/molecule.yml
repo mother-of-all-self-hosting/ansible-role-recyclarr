@@ -54,15 +54,16 @@ provisioner:
         # loopback interface of the test container.
         recyclarr_molecule_sonarr_url: http://127.0.0.1:8989
 
-        # The custom format of the TRaSH Guides that the sync creates in Sonarr,
-        # which a fresh Sonarr does not have.
+        # The custom format of the TRaSH Guides that the sync creates in Sonarr.
+        # verify.yml removes it first, so that the sync has to create it again.
         recyclarr_molecule_custom_format_trash_id: 85c61753df5da1fb2aab6f2a47426b09
         recyclarr_molecule_custom_format_name: BR-DISK
 
         # The season folder format the TRaSH Guides recommend, which the sync
-        # sets through the configuration extension. Sonarr's own is
-        # `Season {season}`.
+        # sets through the configuration extension, and Sonarr's own, which
+        # verify.yml puts back first.
         recyclarr_molecule_season_folder_format_guide: "Season {season:00}"
+        recyclarr_molecule_season_folder_format_stock: "Season {season}"
 
         # Variables for Recyclarr
         #
