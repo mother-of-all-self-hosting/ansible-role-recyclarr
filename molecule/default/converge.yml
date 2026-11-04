@@ -1,0 +1,38 @@
+# SPDX-FileCopyrightText: 2026 spatterlight
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+---
+- name: Include roles for Recyclarr Molecule tests
+  hosts: all
+  become: true
+  gather_facts: true
+  tasks:
+    - name: Include roles for Recyclarr Molecule tests
+      ansible.builtin.include_role:
+        name: "{{ role_name }}"
+        public: true
+      loop:
+        - com.devture.ansible.role.playbook_help
+        - com.devture.ansible.role.systemd_docker_base
+        - ansible-role-sonarr
+        - "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') | basename }}"
+      loop_control:
+        loop_var: role_name
+
+- name: Ensure Recyclarr service is started
+  hosts: all
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Ensure systemd daemon is reloaded
+      ansible.builtin.systemd_service:
+        daemon_reload: true
+
+    # Sonarr is deliberately not started here. Recyclarr's unit wants it (see
+    # `recyclarr_systemd_wanted_services_list_custom` in molecule.yml), so
+    # starting Recyclarr is what has to bring Sonarr up.
+    - name: Ensure Recyclarr systemd service is started
+      ansible.builtin.systemd_service:
+        name: recyclarr.service
+        state: started

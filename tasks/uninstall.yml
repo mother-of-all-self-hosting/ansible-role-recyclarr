@@ -1,0 +1,85 @@
+# SPDX-FileCopyrightText: 2023, 2026 Slavi Pantaleev
+# SPDX-FileCopyrightText: 2025, 2026 Suguru Hirahara
+# SPDX-FileCopyrightText: 2025, 2026 spatterlight
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+---
+- name: Check existence of Recyclarr systemd service
+  ansible.builtin.stat:
+    path: "{{ devture_systemd_docker_base_systemd_path }}/{{ recyclarr_identifier }}.service"
+  register: recyclarr_service_stat
+
+- name: Uninstall Recyclarr systemd services and files
+  when: recyclarr_service_stat.stat.exists | bool
+  block:
+    - name: Ensure Recyclarr systemd service is stopped
+      ansible.builtin.service:
+        name: "{{ recyclarr_identifier }}"
+        state: stopped
+        enabled: false
+        daemon_reload: true
+
+    - name: Ensure Recyclarr systemd service does not exist
+      ansible.builtin.file:
+        path: "{{ devture_systemd_docker_base_systemd_path }}/{{ recyclarr_identifier }}.service"
+        state: absent
+
+    - name: Ensure Recyclarr support files do not exist
+      ansible.builtin.file:
+        path: "{{ recyclarr_base_path }}/{{ item }}"
+        state: absent
+      with_items:
+        - env
+        - recyclarr.yml
+
+    - name: Ensure Recyclarr data path does not exist if empty
+      ansible.builtin.command:
+        cmd: "rmdir {{ recyclarr_data_path }}"
+      register: recyclarr_data_path_deletion_result
+      changed_when: recyclarr_data_path_deletion_result.rc == 0
+      failed_when: false
+
+    - name: Ensure Recyclarr base path does not exist if empty
+      ansible.builtin.command:
+        cmd: "rmdir {{ recyclarr_base_path }}"
+      register: recyclarr_base_path_deletion_result
+      changed_when: recyclarr_base_path_deletion_result.rc == 0
+      failed_when: false
+
+    - name: Ensure Recyclarr container network does not exist
+      when: recyclarr_container_network_deletion_enabled
+      block:
+        - name: Ensure Recyclarr container network does not exist via community.docker.docker_network
+          when: devture_systemd_docker_base_container_network_creation_method == 'ansible-module'
+          community.docker.docker_network:
+            name: "{{ recyclarr_container_network }}"
+            state: absent
+          register: recyclarr_network_deletion_result
+
+        - name: Ensure Recyclarr container network does not exist via ansible.builtin.command
+          when: devture_systemd_docker_base_container_network_creation_method == 'command'
+          ansible.builtin.command:
+            cmd: >-
+              {{ devture_systemd_docker_base_host_command_docker }} network rm
+              {{ recyclarr_container_network }}
+          register: recyclarr_network_deletion_result
+          changed_when: recyclarr_container_network in recyclarr_network_deletion_result.stdout
+
+- name: Check existence of Recyclarr data path
+  ansible.builtin.stat:
+    path: "{{ recyclarr_data_path }}"
+  register: recyclarr_data_path_stat
+
+# We just want to notify the user. Deleting Recyclarr's state is too destructive.
+- name: Inject the message about the remaining Recyclarr data path
+  when: recyclarr_data_path_stat.stat.exists | bool
+  ansible.builtin.set_fact:
+    devture_playbook_runtime_messages_list: |
+      {{
+        devture_playbook_runtime_messages_list | default([])
+        +
+        [
+          "Note: As the Recyclarr instance has been removed, its state and its copy of the TRaSH Guides remain in `" + recyclarr_data_path + "`. Feel free to delete them."
+        ]
+      }}

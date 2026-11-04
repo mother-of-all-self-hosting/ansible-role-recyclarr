@@ -1,0 +1,63 @@
+# SPDX-FileCopyrightText: 2023 Slavi Pantaleev
+# SPDX-FileCopyrightText: 2025, 2026 spatterlight
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+---
+- name: Fail if required Recyclarr settings not defined
+  ansible.builtin.fail:
+    msg: >-
+      You need to define a required configuration setting (`{{ item }}`).
+  when: "lookup('vars', item, default='') | string | length == 0"
+  with_items:
+    - recyclarr_uid
+    - recyclarr_gid
+    - recyclarr_container_network
+    - recyclarr_environment_variables_cron_schedule
+
+- name: Fail if Recyclarr's Sonarr or Radarr instances are not a mapping
+  ansible.builtin.fail:
+    msg: >-
+      `recyclarr_config_{{ item }}` needs to be a mapping of instance names to their settings,
+      not a string or a list.
+  when: recyclarr_configuration[item] | default({}, true) is not mapping
+  with_items:
+    - sonarr
+    - radarr
+
+- name: Fail if no Sonarr or Radarr instance is configured for Recyclarr
+  ansible.builtin.fail:
+    msg: >-
+      You need to configure at least one Sonarr or Radarr instance to sync,
+      in `recyclarr_config_sonarr` or `recyclarr_config_radarr`.
+  when: >-
+    recyclarr_configuration.sonarr | default({}, true) | length == 0
+    and recyclarr_configuration.radarr | default({}, true) | length == 0
+
+# Recyclarr leaves out instances that share a name (in any letter case) or a
+# `base_url`, and only says so at debug level, so they would quietly not sync.
+- name: Fail if a Recyclarr instance name is used more than once
+  ansible.builtin.fail:
+    msg: >-
+      Recyclarr needs each instance name to be unique across Sonarr and Radarr, ignoring case,
+      but the instance names (in lower case) are {{ recyclarr_instance_names }}.
+  when: recyclarr_instance_names | unique | length != recyclarr_instance_names | length
+  vars:
+    recyclarr_instance_names: >-
+      {{ (recyclarr_configuration.sonarr | default({}, true) | list
+          + recyclarr_configuration.radarr | default({}, true) | list)
+         | map('lower') | list }}
+
+# Recyclarr compares base URLs as written, so letter case counts here.
+- name: Fail if a Recyclarr instance base URL is used more than once
+  ansible.builtin.fail:
+    msg: >-
+      Recyclarr needs each instance to have a `base_url` of its own,
+      but the base URLs are {{ recyclarr_instance_base_urls }}. Combine the settings of instances sharing one into a single instance.
+  when: recyclarr_instance_base_urls | unique(case_sensitive=true) | length != recyclarr_instance_base_urls | length
+  vars:
+    recyclarr_instance_base_urls: >-
+      {{ (recyclarr_configuration.sonarr | default({}, true) | dict2items
+          + recyclarr_configuration.radarr | default({}, true) | dict2items)
+         | map(attribute='value') | select('mapping')
+         | map(attribute='base_url', default='') | select | list }}

@@ -1,0 +1,28 @@
+# SPDX-FileCopyrightText: 2023 Slavi Pantaleev
+# SPDX-FileCopyrightText: 2025, 2026 Suguru Hirahara
+# SPDX-FileCopyrightText: 2025, 2026 spatterlight
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+---
+- name: Perform Recyclarr installation tasks
+  when: recyclarr_enabled | bool
+  tags:
+    - setup-all
+    - setup-recyclarr
+    - install-all
+    - install-recyclarr
+  block:
+    - name: Validate Recyclarr configuration
+      ansible.builtin.include_tasks: "{{ role_path }}/tasks/validate_config.yml"
+    - name: Install Recyclarr
+      ansible.builtin.include_tasks: "{{ role_path }}/tasks/install.yml"
+
+- name: Perform Recyclarr uninstallation tasks
+  when: not recyclarr_enabled | bool
+  tags:
+    - setup-all
+    - setup-recyclarr
+  block:
+    - name: Uninstall Recyclarr
+      ansible.builtin.include_tasks: "{{ role_path }}/tasks/uninstall.yml"
