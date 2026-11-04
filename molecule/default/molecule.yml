@@ -42,25 +42,26 @@ provisioner:
         recyclarr_debug_service_enabled: false
         recyclarr_restarts_check_enabled: true
 
-        # The Sonarr that prepare.yml starts for Recyclarr to sync to, on a
-        # container network of its own, which only the role's additional
-        # networks can connect Recyclarr to. Its API key is fixed, so that the
-        # role can be handed it. The port is published on the loopback interface
-        # of the test container only, for verify.yml to read Sonarr's settings.
-        recyclarr_molecule_sonarr_container: recyclarr-molecule-sonarr
-        recyclarr_molecule_sonarr_network: recyclarr-molecule-sonarr
-        recyclarr_molecule_sonarr_image: ghcr.io/linuxserver/sonarr:4.0.20
+        # The container network ansible-role-sonarr creates. Role defaults are
+        # not in scope in a verify play, so it is spelled out.
+        recyclarr_molecule_sonarr_network: sonarr
+
+        # The API key Sonarr is started with, and which Recyclarr is handed.
+        # Sonarr otherwise generates a random one on its first start.
         recyclarr_molecule_sonarr_api_key: a1b2c3d4e5f60718293a4b5c6d7e8f90
-        recyclarr_molecule_sonarr_url: http://127.0.0.1:18989
+
+        # Where verify.yml reads Sonarr's settings: the port published on the
+        # loopback interface of the test container.
+        recyclarr_molecule_sonarr_url: http://127.0.0.1:8989
 
         # The custom format of the TRaSH Guides that the sync creates in Sonarr,
         # which a fresh Sonarr does not have.
         recyclarr_molecule_custom_format_trash_id: 85c61753df5da1fb2aab6f2a47426b09
         recyclarr_molecule_custom_format_name: BR-DISK
 
-        # Sonarr's own season folder format, and the one the TRaSH Guides
-        # recommend, which the sync sets through the configuration extension.
-        recyclarr_molecule_season_folder_format_stock: "Season {season}"
+        # The season folder format the TRaSH Guides recommend, which the sync
+        # sets through the configuration extension. Sonarr's own is
+        # `Season {season}`.
         recyclarr_molecule_season_folder_format_guide: "Season {season:00}"
 
         # Variables for Recyclarr
@@ -70,12 +71,16 @@ provisioner:
         recyclarr_uid: 1873
         recyclarr_gid: 1873
 
+        # The wiring docs/configuring-recyclarr.md describes for Sonarr on the
+        # same server.
         recyclarr_container_additional_networks_custom:
-          - "{{ recyclarr_molecule_sonarr_network }}"
+          - "{{ sonarr_container_network }}"
+        recyclarr_systemd_wanted_services_list_custom:
+          - "{{ sonarr_identifier }}.service"
 
         recyclarr_config_sonarr:
           main:
-            base_url: "http://{{ recyclarr_molecule_sonarr_container }}:8989"
+            base_url: http://sonarr:8989
             api_key: "{{ recyclarr_molecule_sonarr_api_key }}"
             custom_formats:
               - trash_ids:
@@ -98,6 +103,15 @@ provisioner:
         # that the timezone the container ends up in can only have come from
         # templates/env.j2.
         recyclarr_environment_variables_tz: Asia/Tokyo
+
+        # Variables for Sonarr
+        sonarr_uid: 1000
+        sonarr_gid: 1000
+        sonarr_hostname: localhost
+        sonarr_container_labels_traefik_enabled: false
+        sonarr_container_http_bind_port: 127.0.0.1:8989
+        sonarr_environment_variables_additional_variables: |
+          SONARR__AUTH__APIKEY={{ recyclarr_molecule_sonarr_api_key }}
   env:
     # Workaround for https://github.com/ansible/molecule/issues/4391
     ANSIBLE_ROLES_PATH: ${MOLECULE_PROJECT_DIRECTORY}/..:/.ansible/roles:/usr/share/ansible/roles:/etc/ansible/roles:~/.ansible/roles

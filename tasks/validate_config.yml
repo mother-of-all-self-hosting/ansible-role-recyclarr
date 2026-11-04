@@ -13,6 +13,7 @@
     - recyclarr_uid
     - recyclarr_gid
     - recyclarr_container_network
+    - recyclarr_environment_variables_cron_schedule
 
 - name: Fail if no Sonarr or Radarr instance is configured for Recyclarr
   ansible.builtin.fail:
@@ -22,3 +23,15 @@
   when: >-
     recyclarr_configuration.sonarr | default({}, true) | length == 0
     and recyclarr_configuration.radarr | default({}, true) | length == 0
+
+# Recyclarr would log this at debug level only, and then sync nothing at all.
+- name: Fail if a Recyclarr instance name is used for both Sonarr and Radarr
+  ansible.builtin.fail:
+    msg: >-
+      Recyclarr needs each instance name to be unique across Sonarr and Radarr,
+      but `{{ recyclarr_instance_names_shared | join('`, `') }}` is used for both.
+  when: recyclarr_instance_names_shared | length > 0
+  vars:
+    recyclarr_instance_names_shared: >-
+      {{ recyclarr_configuration.sonarr | default({}, true) | list
+         | intersect(recyclarr_configuration.radarr | default({}, true) | list) }}

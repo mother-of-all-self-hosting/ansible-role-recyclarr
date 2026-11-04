@@ -1,7 +1,7 @@
 ---
 galaxy_info:
   author: spatterlight
-  company: spatterlight
+  company: mash
   role_name: recyclarr
   namespace: mash
   description: An Ansible role for installing Recyclarr, which syncs TRaSH Guides settings to Sonarr and Radarr

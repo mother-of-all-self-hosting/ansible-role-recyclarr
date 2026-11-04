@@ -109,11 +109,12 @@ recyclarr_container_cleanup_command: |
   exit 1
 
 # The Sonarr instances to sync, as Recyclarr's `sonarr` section, keyed by a name for each instance.
+# The names must be unique across both `recyclarr_config_sonarr` and `recyclarr_config_radarr`.
 # See: https://recyclarr.dev/reference/configuration/
 #
 # Example:
 # recyclarr_config_sonarr:
-#   main:
+#   sonarr:
 #     base_url: http://sonarr:8989
 #     api_key: YOUR_SONARR_API_KEY_HERE
 #     quality_definition:
@@ -121,11 +122,12 @@ recyclarr_container_cleanup_command: |
 recyclarr_config_sonarr: {}
 
 # The Radarr instances to sync, as Recyclarr's `radarr` section, keyed by a name for each instance.
+# The names must be unique across both `recyclarr_config_sonarr` and `recyclarr_config_radarr`.
 # See: https://recyclarr.dev/reference/configuration/
 #
 # Example:
 # recyclarr_config_radarr:
-#   main:
+#   radarr:
 #     base_url: http://radarr:7878
 #     api_key: YOUR_RADARR_API_KEY_HERE
 #     quality_definition:

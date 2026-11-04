@@ -90,10 +90,6 @@
         - name: Parse the Recyclarr container definition
           ansible.builtin.set_fact:
             recyclarr_container: "{{ (recyclarr_container_raw.stdout | from_json)[0] }}"
-            recyclarr_mounts: >-
-              {{ dict((recyclarr_container_raw.stdout | from_json)[0].Mounts
-                 | map(attribute='Destination')
-                 | zip((recyclarr_container_raw.stdout | from_json)[0].Mounts)) }}
 
         - name: Assert that the data path and the rendered configuration file are mounted where Recyclarr reads them
           ansible.builtin.assert:
@@ -104,6 +100,8 @@
               - not recyclarr_mounts['/config/recyclarr.yml'].RW
             fail_msg: "The container's mounts are not what the role should have produced: {{ recyclarr_container.Mounts }}"
             success_msg: "The data path is mounted at /config and the configuration file read-only over /config/recyclarr.yml"
+          vars:
+            recyclarr_mounts: "{{ dict(recyclarr_container.Mounts | map(attribute='Destination') | zip(recyclarr_container.Mounts)) }}"
 
         - name: Assert that the read-only container still gets its writable /tmp
           ansible.builtin.assert:
@@ -202,8 +200,7 @@
         # Recyclarr does not sync on start, only on its schedule, so a custom format
         # turning up in Sonarr means the scheduled sync ran, read the rendered
         # configuration, reached Sonarr over the additional network, and could write
-        # its copy of the TRaSH Guides to the data path. prepare.yml asserted that
-        # the fresh Sonarr had none.
+        # its copy of the TRaSH Guides to the data path. A fresh Sonarr has none.
         - name: Wait for the scheduled sync to create the custom format in Sonarr (up to 300s)
           ansible.builtin.uri:
             url: "{{ recyclarr_molecule_sonarr_url }}/api/v3/customformat"
@@ -214,20 +211,26 @@
           delay: 5
           failed_when: false
 
-        - name: Read the naming settings of Sonarr
+        # The sync sets the media naming after the custom formats, so it may not
+        # have got there yet.
+        - name: Wait for the same sync to set the season folder format in Sonarr (up to 60s)
           ansible.builtin.uri:
             url: "{{ recyclarr_molecule_sonarr_url }}/api/v3/config/naming"
             headers: "{{ recyclarr_verify_sonarr_headers }}"
           register: recyclarr_sonarr_naming
+          until: (recyclarr_sonarr_naming.json | default({})).get('seasonFolderFormat') == recyclarr_molecule_season_folder_format_guide
+          retries: 12
+          delay: 5
+          failed_when: false
 
         - name: Assert the sync applied both the instance and its extension to Sonarr
           ansible.builtin.assert:
             that:
               - recyclarr_molecule_custom_format_name in (recyclarr_sonarr_custom_formats.json | default([]) | map(attribute='name') | list)
-              - recyclarr_sonarr_naming.json.seasonFolderFormat == recyclarr_molecule_season_folder_format_guide
+              - (recyclarr_sonarr_naming.json | default({})).get('seasonFolderFormat') == recyclarr_molecule_season_folder_format_guide
             fail_msg: >-
               Sonarr has the custom formats {{ recyclarr_sonarr_custom_formats.json | default([]) | map(attribute='name') | list }}
-              and the season folder format {{ recyclarr_sonarr_naming.json.seasonFolderFormat }}
+              and the season folder format {{ (recyclarr_sonarr_naming.json | default({})).get('seasonFolderFormat') }}
             success_msg: >-
               The scheduled sync created {{ recyclarr_molecule_custom_format_name }} in Sonarr
               and set its season folder format to {{ recyclarr_sonarr_naming.json.seasonFolderFormat }}

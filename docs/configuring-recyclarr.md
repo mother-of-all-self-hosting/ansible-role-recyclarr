@@ -55,19 +55,21 @@ The instances are configured with `recyclarr_config_sonarr` and `recyclarr_confi
 
 ```yaml
 recyclarr_config_sonarr:
-  main:
+  sonarr:
     base_url: http://sonarr:8989
     api_key: YOUR_SONARR_API_KEY_HERE
     quality_definition:
       type: series
 
 recyclarr_config_radarr:
-  main:
+  radarr:
     base_url: http://radarr:7878
     api_key: YOUR_RADARR_API_KEY_HERE
     quality_definition:
       type: movie
 ```
+
+**Note**: each instance needs a name of its own, across Sonarr and Radarr alike. Recyclarr does not sync at all if a name is used for both.
 
 Refer to [this page](https://recyclarr.dev/reference/configuration/) on the documentation for everything an instance can configure, and to [this page](https://recyclarr.dev/guide/guide-configs/) for ready-made configurations that follow the TRaSH Guides.
 
@@ -88,8 +90,6 @@ recyclarr_systemd_wanted_services_list_custom:
   - "{{ sonarr_identifier }}.service"
   - "{{ radarr_identifier }}.service"
 ```
-
-**Note**: if you use the MASH playbook, this is done for you.
 
 Then use `http://sonarr:8989` and `http://radarr:7878` as `base_url` (or how you/your playbook named the services, e.g. `http://mash-sonarr:8989`). If Sonarr or Radarr is served under a path prefix, add it to the URL (e.g. `http://mash-sonarr:8989/sonarr`).
 

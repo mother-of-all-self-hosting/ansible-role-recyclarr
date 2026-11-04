@@ -4,6 +4,9 @@ roles:
   - src: git+https://github.com/geerlingguy/ansible-role-docker.git
     version: 8.0.0
     name: ansible-role-docker
+  - src: git+https://github.com/mother-of-all-self-hosting/ansible-role-sonarr.git
+    version: v4.0.20-7
+    name: ansible-role-sonarr
   - src: git+https://github.com/devture/com.devture.ansible.role.playbook_help.git
     version: main
     name: com.devture.ansible.role.playbook_help
