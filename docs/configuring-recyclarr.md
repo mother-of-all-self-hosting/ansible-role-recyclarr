@@ -91,6 +91,8 @@ recyclarr_systemd_wanted_services_list_custom:
   - "{{ radarr_identifier }}.service"
 ```
 
+**Note**: if you use the MASH playbook, this is done for you.
+
 Then use `http://sonarr:8989` and `http://radarr:7878` as `base_url` (or how you/your playbook named the services, e.g. `http://mash-sonarr:8989`). If Sonarr or Radarr is served under a path prefix, add it to the URL (e.g. `http://mash-sonarr:8989/sonarr`).
 
 ### Setting the schedule (optional)
